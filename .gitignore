@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual Environment
+venv/
+env/
+new_env/
+
+# Flask instance folder
+instance/
+
+# Environment variables
+.env
+
+# Database files
+data/*.db

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scam Detector</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; }
+        h1 { text-align: center; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
+        textarea { width: 100%; height: 100px; margin-bottom: 10px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
+        button { padding: 10px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; width: 100%; }
+        button:hover { background-color: #218838; }
+        #results, #result, #linkResult { margin-top: 20px; }
+        .loading { color: blue; }
+        .error { color: red; }
+        .success { color: green; }
+        .message { margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to the Scam Detector, {{ current_user.username }}!</h1>
+
+        <!-- Form for describing a scam -->
+        <form id="scamForm">
+            <h2>Describe a Scam</h2>
+            <textarea id="description" placeholder="Describe the scam..." required></textarea>
+            <button type="submit">Submit</button>
+        </form>
+        <div id="result" class="message"></div>
+
+        <!-- Form for scanning Facebook listing -->
+        <h2>Scan a Facebook Listing</h2>
+        <form id="linkForm">
+            <textarea id="linkInput" placeholder="Paste Facebook listing link here..." required></textarea>
+            <button type="submit">Scan Listing</button>
+        </form>
+        <div id="linkResult" class="message"></div>
+
+        <!-- Notifications for new scam reports -->
+        <h2>Recent Scam Reports</h2>
+        <div id="notifications" class="message"></div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        const socket = io();
+
+        // Handle new scam reports from Socket.IO
+        socket.on('new_scam_reported', (data) => {
+            const notificationsDiv = document.getElementById('notifications');
+            notificationsDiv.innerHTML += `<p class="success">New scam reported: ${data.title} - ${data.description}</p>`;
+        });
+
+        // Handle scam description submission
+        document.getElementById('scamForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const description = document.getElementById('description').value;
+            const resultDiv = document.getElementById('result');
+
+            resultDiv.innerHTML = '<p class="loading">Processing...</p>';
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ description })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                const data = await response.json();
+                resultDiv.innerHTML = `<p class="success">Prediction: ${data.prediction}</p>`;
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            }
+        });
+
+        // Handle Facebook listing scan submission
+        document.getElementById('linkForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const link = document.getElementById('linkInput').value;
+            const linkResultDiv = document.getElementById('linkResult');
+
+            linkResultDiv.innerHTML = '<p class="loading">Scanning...</p>';
+
+            try {
+                const response = await fetch('/scan_listing', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ link })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                const data = await response.json();
+                linkResultDiv.innerHTML = `<p class="success">Scan Result: ${data.result || 'No issues found'}</p>`;
+            } catch (error) {
+                linkResultDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            }
+        });
+    </script>
+</body>
+</html>
